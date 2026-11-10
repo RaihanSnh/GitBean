@@ -1,13 +1,33 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Recipe {
+  id                 String   @id @default(uuid())
+  title              String
+  bean_origin        String
+  roast_level        String
+  brew_method        String
+  grind_size_microns Int
+  water_temp_celsius Int
+  coffee_grams       Float
+  water_grams        Float
+  ratio              String
+  pour_steps         Json
+  author_alias       String
+  commit_message     String
+  version_tag        String   @default("v1.0")
+  parent_recipe_id   String?
+  parent_recipe      Recipe?  @relation("RecipeFork", fields: [parent_recipe_id], references: [id], onDelete: SetNull)
+  forks              Recipe[] @relation("RecipeFork")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([parent_recipe_id])
+  @@index([created_at])
 }
