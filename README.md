@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitBean
 
-## Getting Started
+GitBean is a Next.js recipe repository for specialty coffee. Recipes can be forked into new branches, their brew parameters compared in a side-by-side diff, and each change saved with a required commit message.
 
-First, run the development server:
+## Run with Docker (recommended)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Docker Compose starts Next.js, PostgreSQL 17, and Redis 7. The app waits for healthy services and applies Prisma migrations before serving traffic.
+
+```sh
+docker compose up --build -d
+docker compose exec app node prisma/seed.mjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. To inspect PostgreSQL with Adminer, start the tools profile:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+docker compose --profile tools up --build -d
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Adminer is at <http://localhost:8080> (server `db`, database/user/password from `.env`, defaults `gitbean`). Set `POSTGRES_PASSWORD` in `.env` before sharing or deploying. The app container runs as an unprivileged user with a read-only root filesystem and dropped Linux capabilities.
 
-## Learn More
+## Run locally
 
-To learn more about Next.js, take a look at the following resources:
+Use Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, then install and migrate:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sh
+npm ci
+npm run db:generate
+npm run db:deploy
+npm run db:seed
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For local schema iteration, use `npm run db:migrate -- --name describe_change`. Set `REDIS_URL` to enable the short-lived recipe list cache; if Redis is unavailable, the app continues against PostgreSQL without cache. Database access uses Prisma's PostgreSQL driver adapter.
 
-## Deploy on Vercel
+## Recipe API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `GET /api/recipes` lists recipes with fork parent and fork count.
+- `POST /api/recipes` creates a master recipe or a fork. It validates required fields, pour steps, supported methods/roasts, and parent existence. Every new record requires an explanatory `commit_message`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The UI starts with sample recipes if the database is offline and switches to persisted records when the API becomes available. In that case, saving requires PostgreSQL to be running.
+
+## Exam architecture
+
+- Multi-stage Docker build outputs Next.js standalone server.
+- PostgreSQL data and Redis append-only storage use named volumes.
+- PostgreSQL, Redis, and app have healthchecks; Adminer is only started with profile `tools`.
+- Prisma schema and initial migration live in `prisma/`.
