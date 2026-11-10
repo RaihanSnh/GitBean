@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCached, invalidateRecipeCache, setCached } from "@/lib/cache";
+import { currentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    if (new URL(request.url).searchParams.get("mine") === "1") {
+      const user = await currentUser();
+      if (!user) return NextResponse.json([]);
+      const ownRecipes = await prisma.recipe.findMany({ where: { author_user_id: user.id, parent_recipe_id: { not: null } }, include: { parent_recipe: { select: { id: true, title: true, author_alias: true } }, _count: { select: { forks: true } } }, orderBy: { created_at: "desc" } });
+      return NextResponse.json(ownRecipes);
+    }
     const cached = await getCached<unknown[]>("recipes:all");
     if (cached) return NextResponse.json(cached);
     const recipes = await prisma.recipe.findMany({
@@ -37,6 +44,8 @@ function validRecipe(body: Record<string, unknown>) {
 
 export async function POST(request: Request) {
   try {
+    const user = await currentUser();
+    if (!user) return NextResponse.json({ error: "Sign in before creating or forking a recipe." }, { status: 401 });
     const body = await request.json() as Record<string, unknown>;
     const message = validRecipe(body);
     if (message) return NextResponse.json({ error: message }, { status: 400 });
@@ -49,7 +58,7 @@ export async function POST(request: Request) {
       brew_method: body.brew_method as string, grind_size_microns: body.grind_size_microns as number,
       water_temp_celsius: body.water_temp_celsius as number, coffee_grams: body.coffee_grams as number,
       water_grams: body.water_grams as number, ratio: `1:${((body.water_grams as number) / (body.coffee_grams as number)).toFixed(1)}`,
-      pour_steps: body.pour_steps as object[], author_alias: (body.author_alias as string).trim().replace(/^@/, ""),
+      pour_steps: body.pour_steps as object[], author_alias: user.username, author_user_id: user.id,
       commit_message: (body.commit_message as string).trim(), parent_recipe_id: parentId,
       version_tag: parentId ? "v1.1" : "v1.0",
     } });

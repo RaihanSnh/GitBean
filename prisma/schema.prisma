@@ -25,9 +25,47 @@ model Recipe {
   parent_recipe_id   String?
   parent_recipe      Recipe?  @relation("RecipeFork", fields: [parent_recipe_id], references: [id], onDelete: SetNull)
   forks              Recipe[] @relation("RecipeFork")
+  author_user_id     String?
+  author_user        User?    @relation(fields: [author_user_id], references: [id], onDelete: SetNull)
+  collections        RecipeCollection[]
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 
   @@index([parent_recipe_id])
   @@index([created_at])
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  username      String   @unique
+  password_hash String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  recipes       Recipe[]
+  collections   Collection[]
+}
+
+model Collection {
+  id         String   @id @default(uuid())
+  name       String
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recipes    RecipeCollection[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([user_id, name])
+  @@index([user_id])
+}
+
+model RecipeCollection {
+  collection_id String
+  recipe_id     String
+  collection    Collection @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+  recipe        Recipe     @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+  created_at    DateTime   @default(now())
+
+  @@id([collection_id, recipe_id])
+  @@index([recipe_id])
 }

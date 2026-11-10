@@ -6,6 +6,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-gitbean}:${POSTGRES_PASSWORD:-gitbean_local}@db:5432/${POSTGRES_DB:-gitbean}?schema=public
       REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET:-gitbean_local_change_me_before_deployment_please}
       NODE_ENV: production
     ports:
       - "${APP_PORT:-3000}:3000"
