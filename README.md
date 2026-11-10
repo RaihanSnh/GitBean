@@ -64,3 +64,4 @@ For schema development, create a migration with `npm run db:migrate -- --name de
 The Prisma schema and versioned SQL migrations are in `prisma/`. For local development without a database, the home page shows sample recipes; persistent account, recipe, and collection actions require PostgreSQL.
 
 https://medium.com/@natharaihans/building-gitbean-bringing-git-style-version-control-to-specialty-coffee-dialing-in-60354054d868?postPublishedType=repub
+https://youtu.be/rPI_bzIw32M
